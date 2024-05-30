@@ -20,7 +20,7 @@ $secret = '<YourAppSecretHere>' # Secret of the App Registration
 # Autoupdate function
 
 # Version of the local script
-$localVersion = "1.2.0"
+$localVersion = "1.3.0"
 
 # URL to the version file on GitHub
 $versionUrl = "https://raw.githubusercontent.com/ugurkocde/IntuneAssignmentChecker/main/version.txt"
@@ -74,31 +74,66 @@ catch {
 
 # Do not change the following code
 
-# Check if any of the variables are not set or contain placeholder values
-if (-not $appid -or $appid -eq '<YourAppIdHere>' -or
-    -not $tenantid -or $tenantid -eq '<YourTenantIdHere>' -or
-    -not $secret -or $secret -eq '<YourAppSecretHere>') {
-    Write-Host "App ID, Tenant ID, or Secret is missing or not set correctly. Please fill out all the necessary details." -ForegroundColor Red
-    exit
-}
+# Added Authentication selection menu - James Vincent - 30/05/2024
 
-$body = @{
-    Grant_Type    = "client_credentials"
-    Scope         = "https://graph.microsoft.com/.default"
-    Client_Id     = $appid
-    Client_Secret = $secret
-}
- 
-$connection = Invoke-RestMethod `
-    -Uri https://login.microsoftonline.com/$tenantid/oauth2/v2.0/token `
-    -Method POST `
-    -Body $body
- 
-$token = $connection.access_token
+do {
+    # Main Menu for Authentication selection
+    Write-Host "Select the type of authentication you want to use for Microsoft Graph." -ForegroundColor Cyan
+    Write-Host "1. App Registration" -ForegroundColor Yellow
+    Write-Host "2. Interactive" -ForegroundColor Yellow
+    Write-Host "8. Exit" -ForegroundColor Red
 
-$secureToken = ConvertTo-SecureString $token -AsPlainText -Force
- 
-Connect-MgGraph -AccessToken $secureToken -NoWelcome
+    $selection = Read-Host "Please enter your choice (1, 2 or 8)"
+    switch ($selection) {
+
+        '1' {
+            Write-Host "App Registration chosen" -ForegroundColor Green
+
+            # Check if any of the variables are not set or contain placeholder values
+            if (-not $appid -or $appid -eq '<YourAppIdHere>' -or
+                -not $tenantid -or $tenantid -eq '<YourTenantIdHere>' -or
+                -not $secret -or $secret -eq '<YourAppSecretHere>') {
+                Write-Host "App ID, Tenant ID, or Secret is missing or not set correctly. Please fill out all the necessary details." -ForegroundColor Red
+                exit
+            }
+
+            $body = @{
+                Grant_Type    = "client_credentials"
+                Scope         = "https://graph.microsoft.com/.default"
+                Client_Id     = $appid
+                Client_Secret = $secret
+            }
+            
+            $connection = Invoke-RestMethod `
+                -Uri https://login.microsoftonline.com/$tenantid/oauth2/v2.0/token `
+                -Method POST `
+                -Body $body
+            
+            $token = $connection.access_token
+
+            $secureToken = ConvertTo-SecureString $token -AsPlainText -Force
+            
+            Connect-MgGraph -AccessToken $secureToken -NoWelcome
+
+        }
+        '2' {
+            Write-Host "Interactive authentication chosen" -ForegroundColor Green
+
+            Connect-MgGraph -NoWelcome
+        }
+        '8' {
+            Write-Host "Exiting..." -ForegroundColor Red
+            exit
+        }
+    }
+
+    # Pause before showing the menu again
+    if ($selection -ne '2') {
+        Write-Host "Press any key to return to the main menu..." -ForegroundColor Cyan
+        $null = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    }
+    
+} while ($selection -ne '2')
 
 # Loop until the user decides to exit
 do {
